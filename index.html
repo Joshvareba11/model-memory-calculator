@@ -40,6 +40,17 @@
         <label for="ctx">Context size (tokens)</label>
         <input id="ctx" type="number" min="1" step="1" value="4096" style="width: 8rem;" />
       </div>
+      <div>
+        <label for="kvq">KV cache quantization</label>
+        <select id="kvq" style="padding:.4rem .5rem;">
+          <option value="fp16" selected>FP16/BF16 (4.0 bytes/value)</option>
+          <option value="fp32">FP32 (8.0 bytes/value)</option>
+          <option value="int8">INT8 (2.0 bytes/value)</option>
+          <option value="q6">Q6 (6-bit ≈ 1.5 bytes/value)</option>
+          <option value="q5">Q5 (5-bit ≈ 1.25 bytes/value)</option>
+          <option value="q4">Q4 (4-bit ≈ 1.0 bytes/value)</option>
+        </select>
+      </div>
       <label><input type="checkbox" id="verbose" /> Verbose</label>
       <button id="btnUrl">Read URL</button>
       <button id="btnFile">Read File</button>
@@ -348,11 +359,12 @@
       const params = await readModelParams(url, { verbose });
       if (!params) return null;
       const modelSizeMB = Math.floor(sizeBytes / 1_000_000);
-      const kvBytes = 4.0 * params.hidden_size * params.hidden_layers * contextSize;
+      const kvq = getKvqBytesPerValue();
+      const kvBytes = kvq * params.hidden_size * params.hidden_layers * contextSize;
       const kvCacheMB = Math.floor(kvBytes / 1_000_000);
       const totalRequiredMB = modelSizeMB + kvCacheMB;
-      const displayString = `${formatMemorySize(totalRequiredMB)} (Model: ${formatMemorySize(modelSizeMB)} + KV: ${formatMemorySize(kvCacheMB)})`;
-      return { modelSizeMB, kvCacheMB, totalRequiredMB, displayString, hasEstimate: true };
+      const displayString = `${formatMemorySize(totalRequiredMB)} (Model: ${formatMemorySize(modelSizeMB)} + KV: ${formatMemorySize(kvCacheMB)} @ ${getKvqLabel()})`;
+      return { modelSizeMB, kvCacheMB, totalRequiredMB, displayString, hasEstimate: true, kvq: getKvqLabel() };
     }
 
     async function calculateMemoryUsageFromFile(file, contextSize, { verbose = false } = {}) {
@@ -361,11 +373,12 @@
       const params = await readModelParams(file, { verbose });
       if (!params) return null;
       const modelSizeMB = Math.floor(sizeBytes / 1_000_000);
-      const kvBytes = 4.0 * params.hidden_size * params.hidden_layers * contextSize;
+      const kvq = getKvqBytesPerValue();
+      const kvBytes = kvq * params.hidden_size * params.hidden_layers * contextSize;
       const kvCacheMB = Math.floor(kvBytes / 1_000_000);
       const totalRequiredMB = modelSizeMB + kvCacheMB;
-      const displayString = `${formatMemorySize(totalRequiredMB)} (Model: ${formatMemorySize(modelSizeMB)} + KV: ${formatMemorySize(kvCacheMB)})`;
-      return { modelSizeMB, kvCacheMB, totalRequiredMB, displayString, hasEstimate: true };
+      const displayString = `${formatMemorySize(totalRequiredMB)} (Model: ${formatMemorySize(modelSizeMB)} + KV: ${formatMemorySize(kvCacheMB)} @ ${getKvqLabel()})`;
+      return { modelSizeMB, kvCacheMB, totalRequiredMB, displayString, hasEstimate: true, kvq: getKvqLabel() };
     }
 
     // ===== UI wiring =====
@@ -375,7 +388,33 @@
     const inputFile = document.getElementById('file');
     const verboseEl = document.getElementById('verbose');
     const ctxEl = document.getElementById('ctx');
+    const kvqEl = document.getElementById('kvq');
     const resultEl = document.getElementById('result');
+
+    function getKvqBytesPerValue() {
+      const v = kvqEl?.value || 'fp16';
+      switch (v) {
+        case 'fp32': return 8.0;
+        case 'fp16': return 4.0;
+        case 'int8': return 2.0;
+        case 'q6': return 1.5;
+        case 'q5': return 1.25;
+        case 'q4': return 1.0;
+        default: return 4.0;
+      }
+    }
+    function getKvqLabel() {
+      const map = {
+        fp32: 'FP32',
+        fp16: 'FP16/BF16',
+        int8: 'INT8',
+        q6: 'Q6 (6-bit)',
+        q5: 'Q5 (5-bit)',
+        q4: 'Q4 (4-bit)'
+      };
+      const v = kvqEl?.value || 'fp32';
+      return map[v] || 'FP32';
+    }
 
     function showParams(p) {
       resultEl.innerHTML = '';
@@ -394,6 +433,7 @@
       add('kvCacheMB', u.kvCacheMB);
       add('totalRequiredMB', u.totalRequiredMB);
       add('display', u.displayString);
+      if (u.kvq) add('kvQuantization', u.kvq);
     }
 
     async function handleUrl() {
