@@ -24,7 +24,7 @@ python -m http.server 8000
 
 - GGUF URL: Paste a direct link to a `.gguf` (e.g., a Hugging Face “resolve/main” URL). Many hosts allow partial download via HTTP Range.
 - Or choose a local GGUF file: Uses the browser’s File API; no upload leaves your machine.
-- Context size (tokens): Select the desired context window (e.g., 4K, 16K, 128K).
+- Context size (tokens): Select a preset (e.g., 4K, 16K, 128K) or choose "Custom…" and enter any positive integer token length.
 - KV cache quantization: Choose how keys/values are stored in memory. Options show approximate bytes per value.
 - Verbose: Prints debug logs of what’s read and how size is determined.
 

@@ -38,19 +38,23 @@
       </div>
       <div>
         <label for="ctx">Context size (tokens)</label>
-        <select id="ctx" style="padding:.4rem .5rem; width: 8rem;">
-          <option value="1024">1K</option>
-          <option value="2048">2K</option>
-          <option value="4096" selected>4K</option>
-          <option value="8192">8K</option>
-          <option value="16384">16K</option>
-          <option value="32768">32K</option>
-          <option value="65536">64K</option>
-          <option value="131072">128K</option>
-          <option value="262144">256K</option>
-          <option value="524288">512K</option>
-          <option value="1048576">1024K</option>
-        </select>
+        <div style="display:flex; gap:.4rem; align-items:center; flex-wrap:wrap">
+          <select id="ctx" style="padding:.4rem .5rem; width: 8rem;">
+            <option value="1024">1K</option>
+            <option value="2048">2K</option>
+            <option value="4096" selected>4K</option>
+            <option value="8192">8K</option>
+            <option value="16384">16K</option>
+            <option value="32768">32K</option>
+            <option value="65536">64K</option>
+            <option value="131072">128K</option>
+            <option value="262144">256K</option>
+            <option value="524288">512K</option>
+            <option value="1048576">1024K</option>
+            <option value="__custom">Custom…</option>
+          </select>
+          <input id="ctxCustom" type="number" min="1" step="1" placeholder="Tokens" style="width:7rem; padding:.45rem .5rem; display:none" />
+        </div>
       </div>
       <div>
         <label for="kvq">KV cache quantization</label>
@@ -477,7 +481,8 @@
     const inputUrl = document.getElementById('url');
     const inputFile = document.getElementById('file');
     const verboseEl = document.getElementById('verbose');
-    const ctxEl = document.getElementById('ctx');
+  const ctxEl = document.getElementById('ctx');
+  const ctxCustomEl = document.getElementById('ctxCustom');
     const kvqEl = document.getElementById('kvq');
     const resultEl = document.getElementById('result');
 
@@ -527,6 +532,34 @@
       if (u.kvq) add('kvQuantization', u.kvq);
     }
 
+  // Resolve selected context tokens (dropdown or custom numeric input)
+    function resolveContextTokens() {
+      const sel = ctxEl.value;
+      if (sel === '__custom') {
+        const v = parseInt(ctxCustomEl.value, 10);
+        if (!Number.isFinite(v) || v <= 0) return 1; // minimal safe fallback
+        return v;
+      }
+      return Math.max(1, parseInt(sel || '4096', 10));
+    }
+
+  // Toggle custom input visibility when "Custom…" selected
+    ctxEl.addEventListener('change', () => {
+      if (ctxEl.value === '__custom') {
+        ctxCustomEl.style.display = 'inline-block';
+        if (!ctxCustomEl.value) ctxCustomEl.focus();
+      } else {
+        ctxCustomEl.style.display = 'none';
+      }
+    });
+
+    // Light validation
+    ctxCustomEl?.addEventListener('blur', () => {
+      if (!ctxCustomEl.value) return;
+      const v = parseInt(ctxCustomEl.value, 10);
+      if (!Number.isFinite(v) || v <= 0) ctxCustomEl.value = '';
+    });
+
     async function handleUrl() {
       clearLog(); resultEl.textContent = 'Working...';
       let url = inputUrl.value.trim();
@@ -536,7 +569,7 @@
         url = normalized;
         inputUrl.value = normalized;
       }
-      const verbose = verboseEl.checked; const ctx = Math.max(1, parseInt(ctxEl.value || '4096', 10));
+  const verbose = verboseEl.checked; const ctx = resolveContextTokens();
       try {
         const params = await readModelParams(url, { verbose });
         if (!params) { resultEl.innerHTML = '<span class="err">Failed to read params.</span>'; return; }
@@ -551,9 +584,9 @@
       }
     }
 
-    async function handleFile() {
+  async function handleFile() {
       clearLog(); resultEl.textContent = 'Working...';
-      const file = inputFile.files && inputFile.files[0]; const verbose = verboseEl.checked; const ctx = Math.max(1, parseInt(ctxEl.value || '4096', 10));
+  const file = inputFile.files && inputFile.files[0]; const verbose = verboseEl.checked; const ctx = resolveContextTokens();
       if (!file) { resultEl.textContent = 'Choose a file first.'; return; }
       try {
         const params = await readModelParams(file, { verbose });
