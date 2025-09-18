@@ -38,7 +38,19 @@
       </div>
       <div>
         <label for="ctx">Context size (tokens)</label>
-        <input id="ctx" type="number" min="1" step="1" value="4096" style="width: 8rem;" />
+        <select id="ctx" style="padding:.4rem .5rem; width: 8rem;">
+          <option value="1024">1K</option>
+          <option value="2048">2K</option>
+          <option value="4096" selected>4K</option>
+          <option value="8192">8K</option>
+          <option value="16384">16K</option>
+          <option value="32768">32K</option>
+          <option value="65536">64K</option>
+          <option value="131072">128K</option>
+          <option value="262144">256K</option>
+          <option value="524288">512K</option>
+          <option value="1048576">1024K</option>
+        </select>
       </div>
       <div>
         <label for="kvq">KV cache quantization</label>
