@@ -261,7 +261,18 @@
 
     async function readModelParams(pathOrFile, { verbose = false } = {}) {
       const isUrl = typeof pathOrFile === 'string';
-      const source = isUrl ? new UrlDataSource(pathOrFile, { verbose }) : new BrowserFileDataSource(pathOrFile);
+      let source;
+      if (isUrl) {
+        let metaUrl = pathOrFile;
+        const info = parseSplitInfoFromUrl(metaUrl);
+        if (info && info.index > 1) {
+          metaUrl = buildSplitUrlFrom(metaUrl, 1, info.width);
+          if (verbose) log(`[Split] Non-first shard provided; reading metadata from: ${metaUrl}`);
+        }
+        source = new UrlDataSource(metaUrl, { verbose });
+      } else {
+        source = new BrowserFileDataSource(pathOrFile);
+      }
 
       const magic = await readU32(source);
       if (magic !== 0x46554747) { if (verbose) log(`Invalid GGUF file format. Magic number: 0x${magic.toString(16)}`); return null; }
