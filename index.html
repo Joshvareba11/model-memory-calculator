@@ -281,10 +281,11 @@
         '.attention.head_count_kv',
         '.block_count',
         '.embedding_length',
+        'split.count',
       ];
 
       const params = {};
-      const found = { attention_heads: false, kv_heads: false, hidden_layers: false, hidden_size: false };
+      const found = { attention_heads: false, kv_heads: false, hidden_layers: false, hidden_size: false, split_count: false };
 
       for (let i = 0; i < metadataCount && !source.eof(); i++) {
         let key;
@@ -309,6 +310,12 @@
             } else if (type === GGUFType.UINT32 || type === GGUFType.INT32) {
               const value = await readU32(source); params.hidden_size = value; found.hidden_size = true; if (verbose) log(`  Found hidden_size: ${value} (from key: ${key})`);
             } else { await skipValue(source, type); }
+          } else if (matchedSuffix === 'split.count') {
+            if (type === GGUFType.UINT64 || type === GGUFType.INT64) {
+              const value = await readU64(source); params.split_count = value; found.split_count = true; if (verbose) log(`  Found split_count: ${value} (from key: ${key})`);
+            } else if (type === GGUFType.UINT32 || type === GGUFType.INT32) {
+              const value = await readU32(source); params.split_count = value; found.split_count = true; if (verbose) log(`  Found split_count: ${value} (from key: ${key})`);
+            } else { await skipValue(source, type); }
           } else { await skipValue(source, type); }
         } else { await skipValue(source, type); }
 
@@ -326,6 +333,25 @@
     }
 
     // ===== Memory usage calculation =====
+    function parseSplitInfoFromUrl(url) {
+      // Matches: -00001-of-00013 optionally before extension
+      const re = /-(\d{2,})-of-(\d{2,})(?=\.|$)/;
+      const m = url.match(re);
+      if (!m) return null;
+      const idxStr = m[1];
+      const totalStr = m[2];
+      const width = idxStr.length;
+      const index = Number(idxStr);
+      const total = Number(totalStr);
+      if (!Number.isFinite(index) || !Number.isFinite(total) || total <= 0) return null;
+      return { index, total, width, patternRe: re };
+    }
+
+    function buildSplitUrlFrom(url, newIndex, width) {
+      const idxStr = String(newIndex).padStart(width, '0');
+      return url.replace(/-(\d{2,})-of-(\d{2,})(?=\.|$)/, `-${idxStr}-of-$2`);
+    }
+
     async function getRemoteFileSize(url, { verbose = false } = {}) {
       try {
         // Try HEAD first (no custom headers, fewer preflight issues)
@@ -365,12 +391,42 @@
       return 0;
     }
 
+    async function totalSplitSizeFromUrl(url, params, { verbose = false } = {}) {
+      // Prefer metadata count, else infer from URL
+      const info = parseSplitInfoFromUrl(url);
+      const total = params?.split_count && params.split_count > 1 ? params.split_count : (info?.total || 0);
+      if (!total || total <= 1) return null; // not split
+      const width = info?.width || 5;
+      const partUrls = [];
+      if (info) {
+        for (let i = 1; i <= total; i++) partUrls.push(buildSplitUrlFrom(url, i, width));
+      } else {
+        // Try appending pattern before extension (best-effort)
+        const extIdx = url.lastIndexOf('.');
+        const base = extIdx > -1 ? url.slice(0, extIdx) : url;
+        const ext = extIdx > -1 ? url.slice(extIdx) : '';
+        for (let i = 1; i <= total; i++) {
+          const idxStr = String(i).padStart(width, '0');
+          partUrls.push(`${base}-${idxStr}-of-${String(total).padStart(width, '0')}${ext}`);
+        }
+      }
+      if (verbose) log(`[Split] Detected ${total} parts. Summing sizes...`);
+      const sizes = await Promise.all(partUrls.map(u => getRemoteFileSize(u, { verbose })));
+      if (sizes.some(s => !s || s <= 0)) { if (verbose) log('[Split] Failed to resolve all part sizes.'); return null; }
+      const totalBytes = sizes.reduce((a, b) => a + b, 0);
+      return totalBytes;
+    }
+
     async function calculateMemoryUsageFromUrl(url, contextSize, { verbose = false } = {}) {
-      const sizeBytes = await getRemoteFileSize(url, { verbose });
-      if (!sizeBytes) return null;
       const params = await readModelParams(url, { verbose });
       if (!params) return null;
-      const modelSizeMB = Math.floor(sizeBytes / 1_000_000);
+      let sizeBytesTotal = await totalSplitSizeFromUrl(url, params, { verbose });
+      if (!sizeBytesTotal) {
+        const single = await getRemoteFileSize(url, { verbose });
+        if (!single) return null;
+        sizeBytesTotal = single;
+      }
+      const modelSizeMB = Math.floor(sizeBytesTotal / 1_000_000);
       const kvq = getKvqBytesPerValue();
       const kvBytes = kvq * params.hidden_size * params.hidden_layers * contextSize;
       const kvCacheMB = Math.floor(kvBytes / 1_000_000);
@@ -384,7 +440,18 @@
       if (!sizeBytes) return null;
       const params = await readModelParams(file, { verbose });
       if (!params) return null;
-      const modelSizeMB = Math.floor(sizeBytes / 1_000_000);
+      // If this is one split out of many, estimate total by multiplying
+      let totalBytes = sizeBytes;
+      if (params.split_count && params.split_count > 1) {
+        // Try to use pattern from filename to confirm count; else multiply
+        const m = (file.name || '').match(/-(\d{2,})-of-(\d{2,})(?=\.|$)/);
+        const inferredTotal = m ? Number(m[2]) : params.split_count;
+        if (Number.isFinite(inferredTotal) && inferredTotal > 1) {
+          totalBytes = sizeBytes * inferredTotal;
+          if (verbose) log(`[Split] Local file appears sharded. Estimating total size as ${inferredTotal} parts.`);
+        }
+      }
+      const modelSizeMB = Math.floor(totalBytes / 1_000_000);
       const kvq = getKvqBytesPerValue();
       const kvBytes = kvq * params.hidden_size * params.hidden_layers * contextSize;
       const kvCacheMB = Math.floor(kvBytes / 1_000_000);
@@ -436,6 +503,7 @@
       add('kv_heads', p.kv_heads);
       add('hidden_layers', p.hidden_layers);
       add('hidden_size', p.hidden_size);
+      if (p.split_count) add('split_count', p.split_count);
     }
 
     function showUsage(u) {
