@@ -529,7 +529,14 @@
 
     async function handleUrl() {
       clearLog(); resultEl.textContent = 'Working...';
-      const url = inputUrl.value.trim(); const verbose = verboseEl.checked; const ctx = Math.max(1, parseInt(ctxEl.value || '4096', 10));
+      let url = inputUrl.value.trim();
+      const normalized = normalizeHuggingFaceUrl(url);
+      if (normalized !== url) {
+        log('[Normalize] Hugging Face URL adjusted to raw file path.');
+        url = normalized;
+        inputUrl.value = normalized;
+      }
+      const verbose = verboseEl.checked; const ctx = Math.max(1, parseInt(ctxEl.value || '4096', 10));
       try {
         const params = await readModelParams(url, { verbose });
         if (!params) { resultEl.innerHTML = '<span class="err">Failed to read params.</span>'; return; }
@@ -564,6 +571,27 @@
 
     btnUrl.addEventListener('click', handleUrl);
     btnFile.addEventListener('click', handleFile);
+
+    function normalizeHuggingFaceUrl(u) {
+      if (!u || typeof u !== 'string') return u;
+      try {
+        if (!u.includes('huggingface.co/')) return u;
+        let updated = u.replace(/\/blob\//, '/resolve/');
+        updated = updated.replace(/\?raw=1|\?download=1|\?raw=true/i, '');
+        if (!/\.gguf($|[?#])/.test(updated)) return u;
+        return updated;
+      } catch { return u; }
+    }
+
+    // Add blur normalization
+    inputUrl.addEventListener('blur', () => {
+      const before = inputUrl.value;
+      const after = normalizeHuggingFaceUrl(before.trim());
+      if (after !== before) {
+        inputUrl.value = after;
+        log('[Normalize] Updated URL on blur.');
+      }
+    });
   </script>
 </body>
 </html>
