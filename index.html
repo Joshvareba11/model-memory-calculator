@@ -554,7 +554,7 @@
     });
 
     // Light validation
-    ctxCustomEl?.addEventListener('blur', () => {
+    ctxCustomEl.addEventListener('blur', () => {
       if (!ctxCustomEl.value) return;
       const v = parseInt(ctxCustomEl.value, 10);
       if (!Number.isFinite(v) || v <= 0) ctxCustomEl.value = '';
